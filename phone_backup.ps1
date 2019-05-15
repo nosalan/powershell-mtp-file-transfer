@@ -91,14 +91,14 @@ function Copy-FromPhone-ToDestDir($sourceMtpDir, $destDirPath)
 }
 
 
-
-$phoneRootDir = Get-PhoneMainDir "Miagwuś"
-
-$phoneVoiceRecorderSourceDir = Get-SubFolder $phoneRootDir "Phone\VoiceRecorder"
-Copy-FromPhone-ToDestDir $phoneVoiceRecorderSourceDir $DestDirForVoiceRecordings
+$phoneName = "MyPhoneName" #Phone name as it appears in This PC
+$phoneRootDir = Get-PhoneMainDir $phoneName
 
 $phoneCardPhotosSourceDir = Get-SubFolder $phoneRootDir "Card\DCIM\Camera"
 Copy-FromPhone-ToDestDir $phoneCardPhotosSourceDir $DestDirForPhotos
 
 $phonePhotosSourceDir = Get-SubFolder $phoneRootDir "Phone\DCIM\Camera"
 Copy-FromPhone-ToDestDir $phonePhotosSourceDir $DestDirForPhotos
+
+$phoneVoiceRecorderSourceDir = Get-SubFolder $phoneRootDir "Phone\VoiceRecorder"
+Copy-FromPhone-ToDestDir $phoneVoiceRecorderSourceDir $DestDirForVoiceRecordings
