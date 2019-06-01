@@ -1,9 +1,13 @@
-﻿#for an enhanced version that supports nested folders go to https://github.com/nosalan/powershell-mtp-file-transfer/blob/master/phone_backup_recursive.ps1
+#this is an enhanced version of https://github.com/nosalan/powershell-mtp-file-transfer/blob/master/phone_backup.ps1
+#it supports backing up nested folders
 
-$ErrorActionPreference = "Stop"
-$DestDirForPhotos = "C:\BACKUP\TELEFON_DCIM_ALL"
-$DestDirForVoiceRecordings = "C:\BACKUP\TELEFON_VOICE_RECORDINGS_ALL"
-
+$ErrorActionPreference = [string]"Stop"
+$DestDirForPhotos = [string]"C:\BACKUP\TELEFON_DCIM_ALL"
+$DestDirForCallRecordings = [string]"C:\BACKUP\TELEFON_CALL_RECORDINGS_ALL"
+$DestDirForVoiceRecordings = [string]"C:\BACKUP\TELEFON_VOICE_RECORDINGS_ALL"
+$DestDirForWhatsApp = [string]"C:\BACKUP\TELEFON_WHATSAPP_ALL"
+$DestDirForViber = [string]"C:\BACKUP\TELEFON_VIBER_ALL"
+$Summary = [Hashtable]@{NewFilesCount=0; ExistingFilesCount=0}
 
 function Create-Dir($path)
 {
@@ -63,24 +67,31 @@ function Get-FullPathOfMtpDir($mtpDir)
 
 
 
-function Copy-FromPhone-ToDestDir($sourceMtpDir, $destDirPath)
+function Copy-FromPhoneSource-ToBackup($sourceMtpDir, $destDirPath)
 {
  Create-Dir $destDirPath
  $destDirShell = (new-object -com Shell.Application).NameSpace($destDirPath)
  $fullSourceDirPath = Get-FullPathOfMtpDir $sourceMtpDir
+
  
  Write-Host "Copying from: '" $fullSourceDirPath "' to '" $destDirPath "'"
  
- $copiedCount = 0;
+ $copiedCount, $existingCount = 0
  
  foreach ($item in $sourceMtpDir.GetFolder.Items())
   {
    $itemName = ($item.Name)
    $fullFilePath = Join-Path -Path $destDirPath -ChildPath $itemName
-   
-   if(Test-Path $fullFilePath)
+
+   if($item.IsFolder)
+   {
+      Write-Host $item.Name " is folder, stepping into"
+      Copy-FromPhoneSource-ToBackup  $item (Join-Path $destDirPath $item.GetFolder.Title)
+   }
+   elseif(Test-Path $fullFilePath)
    {
       Write-Host "Element '$itemName' already exists"
+      $existingCount++;
    }
    else
    {
@@ -89,18 +100,21 @@ function Copy-FromPhone-ToDestDir($sourceMtpDir, $destDirPath)
      $destDirShell.CopyHere($item)
    }
   }
+  $script:Summary.NewFilesCount += $copiedCount 
+  $script:Summary.ExistingFilesCount += $existingCount 
   Write-Host "Copied '$copiedCount' elements from '$fullSourceDirPath'"
 }
+
 
 
 $phoneName = "MyPhoneName" #Phone name as it appears in This PC
 $phoneRootDir = Get-PhoneMainDir $phoneName
 
-$phoneCardPhotosSourceDir = Get-SubFolder $phoneRootDir "Card\DCIM\Camera"
-Copy-FromPhone-ToDestDir $phoneCardPhotosSourceDir $DestDirForPhotos
+Copy-FromPhoneSource-ToBackup (Get-SubFolder $phoneRootDir "Phone\ACRCalls") $DestDirForCallRecordings
+Copy-FromPhoneSource-ToBackup (Get-SubFolder $phoneRootDir "Phone\VoiceRecorder") $DestDirForVoiceRecordings
+Copy-FromPhoneSource-ToBackup (Get-SubFolder $phoneRootDir "Phone\WhatsApp") $DestDirForWhatsApp
+Copy-FromPhoneSource-ToBackup (Get-SubFolder $phoneRootDir "Phone\DCIM\Camera") $DestDirForPhotos
+Copy-FromPhoneSource-ToBackup (Get-SubFolder $phoneRootDir "Phone\viber") $DestDirForViber
+Copy-FromPhoneSource-ToBackup (Get-SubFolder $phoneRootDir "Card\DCIM\Camera") $DestDirForPhotos
 
-$phonePhotosSourceDir = Get-SubFolder $phoneRootDir "Phone\DCIM\Camera"
-Copy-FromPhone-ToDestDir $phonePhotosSourceDir $DestDirForPhotos
-
-$phoneVoiceRecorderSourceDir = Get-SubFolder $phoneRootDir "Phone\VoiceRecorder"
-Copy-FromPhone-ToDestDir $phoneVoiceRecorderSourceDir $DestDirForVoiceRecordings
+write-host ($Summary | out-string)
